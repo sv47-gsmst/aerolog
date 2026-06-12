@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const DeviceData = require('../models/DeviceData');
 const { translateBundle } = require('../utils/dictionary');
+const { checkOfflineStatus } = require('../utils/heartbeat');
 
 // POST /api/sync
 // Expected body shape:
@@ -37,17 +38,33 @@ router.post('/sync', async (req, res) => {
       device.metrics.set(appName, current);
     }
 
-    // Update session logs
     device.sessionLogs.lifetimeMinutesTotal += totalNewMinutes;
     device.sessionLogs.consecutiveMinutes += totalNewMinutes;
 
-    // Update heartbeat
     device.connectionHeartbeat.lastSyncTimestamp = new Date();
     device.connectionHeartbeat.isOffline = false;
 
     await device.save();
 
     res.json({ status: 'synced', device });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/device/:deviceId
+// Returns a single device's data with up-to-date offline status
+router.get('/device/:deviceId', async (req, res) => {
+  try {
+    const device = await DeviceData.findOne({ 'childProfile.deviceId': req.params.deviceId });
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    checkOfflineStatus(device);
+    await device.save(); // persist the recalculated isOffline flag
+
+    res.json(device);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
