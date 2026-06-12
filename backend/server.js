@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 const DeviceData = require('./models/DeviceData');
+const syncRoutes = require('./routes/sync');
 
 const app = express();
 app.use(cors());
@@ -12,6 +13,8 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({ status: 'Aerolog backend running' });
 });
+
+app.use('/api', syncRoutes);
 
 // TEMPORARY test route - creates a sample device record
 app.post('/test/create-device', async (req, res) => {
