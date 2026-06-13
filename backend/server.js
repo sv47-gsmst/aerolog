@@ -5,20 +5,32 @@ const http = require('http');
 const WebSocket = require('ws');
 require('dotenv').config();
 
+const session = require('express-session');
 const DeviceData = require('./models/DeviceData');
 const syncRoutes = require('./routes/sync');
 const authRoutes = require('./routes/auth');
+const userAuthRoutes = require('./routes/userAuth');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-this',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 4 * 60 * 60 * 1000, // 4 hours, per spec
+    httpOnly: true
+  }
+}));
 app.get('/', (req, res) => {
   res.json({ status: 'Aerolog backend running' });
 });
 
 app.use('/api', syncRoutes);
 app.use('/api', authRoutes);
+app.use('/api', userAuthRoutes);
+
 // TEMPORARY test route - creates a sample device record
 app.post('/test/create-device', async (req, res) => {
   try {
