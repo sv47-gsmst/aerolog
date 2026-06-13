@@ -5,14 +5,6 @@ const { translateBundle } = require('../utils/dictionary');
 const { checkOfflineStatus } = require('../utils/heartbeat');
 
 // POST /api/sync
-// Expected body shape:
-// {
-//   deviceId: "test-iphone-01",
-//   entries: [
-//     { bundleId: "com.zhiliaoapp.musically", minutes: 12 },
-//     { bundleId: "com.google.ios.youtube", minutes: 8 }
-//   ]
-// }
 router.post('/sync', async (req, res) => {
   try {
     const { deviceId, entries } = req.body;
@@ -46,6 +38,10 @@ router.post('/sync', async (req, res) => {
 
     await device.save();
 
+    // Notify any connected dashboards in real time
+    const broadcast = req.app.get('broadcastDeviceUpdate');
+    if (broadcast) broadcast(device);
+
     res.json({ status: 'synced', device });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -53,7 +49,6 @@ router.post('/sync', async (req, res) => {
 });
 
 // GET /api/device/:deviceId
-// Returns a single device's data with up-to-date offline status
 router.get('/device/:deviceId', async (req, res) => {
   try {
     const device = await DeviceData.findOne({ 'childProfile.deviceId': req.params.deviceId });
@@ -62,7 +57,7 @@ router.get('/device/:deviceId', async (req, res) => {
     }
 
     checkOfflineStatus(device);
-    await device.save(); // persist the recalculated isOffline flag
+    await device.save();
 
     res.json(device);
   } catch (err) {

@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const http = require('http');
+const WebSocket = require('ws');
 require('dotenv').config();
 
 const DeviceData = require('./models/DeviceData');
@@ -47,7 +49,29 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
+// --- HTTP + WebSocket server setup ---
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (ws) => {
+  console.log('Dashboard client connected via WebSocket');
+  ws.on('close', () => console.log('Dashboard client disconnected'));
+});
+
+// Broadcast helper - sends data to all connected dashboards
+function broadcastDeviceUpdate(device) {
+  const payload = JSON.stringify({ type: 'device-update', device });
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  });
+}
+
+// Make broadcast function available to routes
+app.set('broadcastDeviceUpdate', broadcastDeviceUpdate);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
