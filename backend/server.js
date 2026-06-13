@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const DeviceData = require('./models/DeviceData');
 const syncRoutes = require('./routes/sync');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 app.use(cors());
@@ -17,7 +18,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api', syncRoutes);
-
+app.use('/api', authRoutes);
 // TEMPORARY test route - creates a sample device record
 app.post('/test/create-device', async (req, res) => {
   try {
