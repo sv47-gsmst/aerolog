@@ -3,26 +3,31 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const http = require('http');
 const WebSocket = require('ws');
+const session = require('express-session');
 require('dotenv').config();
 
-const session = require('express-session');
 const DeviceData = require('./models/DeviceData');
 const syncRoutes = require('./routes/sync');
 const authRoutes = require('./routes/auth');
 const userAuthRoutes = require('./routes/userAuth');
+const sessionExtender = require('./utils/sessionExtender');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'dev-secret-change-this',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 4 * 60 * 60 * 1000, // 4 hours, per spec
+    maxAge: 4 * 60 * 60 * 1000,
     httpOnly: true
   }
 }));
+
+app.use(sessionExtender);
+
 app.get('/', (req, res) => {
   res.json({ status: 'Aerolog backend running' });
 });
@@ -71,7 +76,6 @@ wss.on('connection', (ws) => {
   ws.on('close', () => console.log('Dashboard client disconnected'));
 });
 
-// Broadcast helper - sends data to all connected dashboards
 function broadcastDeviceUpdate(device) {
   const payload = JSON.stringify({ type: 'device-update', device });
   wss.clients.forEach((client) => {
@@ -81,7 +85,6 @@ function broadcastDeviceUpdate(device) {
   });
 }
 
-// Make broadcast function available to routes
 app.set('broadcastDeviceUpdate', broadcastDeviceUpdate);
 
 const PORT = process.env.PORT || 5000;
