@@ -13,7 +13,12 @@ const userAuthRoutes = require('./routes/userAuth');
 const sessionExtender = require('./utils/sessionExtender');
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
+
 app.use(express.json());
 
 app.use(session({
@@ -67,7 +72,6 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// --- HTTP + WebSocket server setup ---
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
